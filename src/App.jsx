@@ -57,14 +57,20 @@ const App = () => {
 
       // OpenAI TTS request
       const ttsResponse = await openai.audio.speech.create({
-        model: 'text-to-speech-001',
+        model: 'tts-1',
         input: transcription,
         voice: 'alloy' // Use the appropriate voice here
       });
 
-      const ttsAudioBlob = new Blob([ttsResponse.data.audio_content], { type: 'audio/mpeg' });
-      const ttsAudioUrl = URL.createObjectURL(ttsAudioBlob);
-      setTtsAudioUrl(ttsAudioUrl);
+      ttsResponse.blob().then(blob => {
+
+        // const ttsAudioBlob = new Blob([ttsResponse.data.audio_content], { type: 'audio/mpeg' });
+        const ttsAudioUrl = URL.createObjectURL(blob);
+        setTtsAudioUrl(ttsAudioUrl);
+
+      })
+
+
 
     } catch (error) {
       console.error(error);
