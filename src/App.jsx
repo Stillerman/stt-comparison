@@ -1,16 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Container, TextField, Button, Typography, Grid, Paper, CircularProgress, Box } from '@mui/material';
-import { AudioRecorder } from 'react-audio-voice-recorder';
+import React, { useState, useEffect, useRef } from 'react';
+import { Container, Button, Typography, Drawer, Grid, Paper, CircularProgress, Box, AppBar, Toolbar } from '@mui/material';
+import { useAudioRecorder } from 'react-audio-voice-recorder';
 import OpenAI from 'openai';
+import Settings from './Settings';
+import './index.css'
 
 const App = () => {
   const [openaiApiKey, setOpenaiApiKey] = useState(localStorage.getItem('openaiApiKey') || '');
-  const [file, setFile] = useState(null);
+  const [showOriginalAudio, setShowOriginalAudio] = useState(false);
+  
   const [audioUrl, setAudioUrl] = useState('');
   const [openaiResult, setOpenaiResult] = useState('');
   const [openaiLoading, setOpenaiLoading] = useState(false);
   const [openaiTime, setOpenaiTime] = useState(null);
   const [ttsAudioUrl, setTtsAudioUrl] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const audioRef = useRef();
+
+  const {
+    startRecording,
+    stopRecording,
+    recordingBlob,
+  } = useAudioRecorder()
 
   const openai = new OpenAI({
     apiKey: openaiApiKey,
@@ -21,14 +32,20 @@ const App = () => {
     localStorage.setItem('openaiApiKey', openaiApiKey);
   }, [openaiApiKey]);
 
+  useEffect(() => {
+    if (recordingBlob) {
+      handleRecordingComplete(recordingBlob)
+    }
+  }, [recordingBlob])
+
   const handleRecordingComplete = (blob) => {
     const url = URL.createObjectURL(blob);
     const file = new File([blob], 'recording.webm', { type: blob.type });
-    setFile(file);
     setAudioUrl(url);
+    handleTranscription(file);
   };
 
-  const handleTranscription = async () => {
+  const handleTranscription = async (file) => {
     if (!file || !openaiApiKey) {
       alert('Please provide all required inputs');
       return;
@@ -67,7 +84,6 @@ const App = () => {
         // const ttsAudioBlob = new Blob([ttsResponse.data.audio_content], { type: 'audio/mpeg' });
         const ttsAudioUrl = URL.createObjectURL(blob);
         setTtsAudioUrl(ttsAudioUrl);
-
       })
 
 
@@ -79,18 +95,33 @@ const App = () => {
     }
   };
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.play();
+    }
+  }, [audioRef, ttsAudioUrl])
+
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>STT and TTS Tool</Typography>
-      <TextField
-        label="OpenAI API Key"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={openaiApiKey}
-        onChange={(e) => setOpenaiApiKey(e.target.value)}
+    <>
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          STT and TTS Tool
+        </Typography>
+        <Button variant="contained" color="secondary" onClick={() => setSettingsOpen(true)}>Settings</Button>
+      </Toolbar>
+    </AppBar>
+    <Drawer anchor="right" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+      <Settings
+        openaiApiKey={openaiApiKey}
+        setOpenaiApiKey={setOpenaiApiKey}
+        showOriginalAudio={showOriginalAudio}
+        setShowOriginalAudio={setShowOriginalAudio}
+        // Add other settings as needed
       />
-      <AudioRecorder 
+    </Drawer>
+    <Container>
+      {/* <AudioRecorder 
         onRecordingComplete={handleRecordingComplete}
         audioTrackConstraints={{
           noiseSuppression: true,
@@ -98,15 +129,15 @@ const App = () => {
         }}
         downloadOnSavePress={false}
         downloadFileExtension="webm"
-      />
-      {audioUrl && (
+      /> */}
+      <Button onMouseDown={startRecording} onMouseUp={stopRecording} variant="contained" color="secondary">
+        Start Recording
+      </Button>
+      {showOriginalAudio && audioUrl && (
         <Box marginTop={2}>
           <audio controls src={audioUrl} />
         </Box>
       )}
-      <Button variant="contained" color="secondary" onClick={handleTranscription} style={{ marginTop: 20 }}>
-        Transcribe and Generate Speech
-      </Button>
       <Grid container spacing={2} marginTop={2}>
         <Grid item xs={6}>
           <Paper elevation={3} style={{ padding: 16, minHeight: 200 }}>
@@ -127,7 +158,7 @@ const App = () => {
           <Paper elevation={3} style={{ padding: 16, minHeight: 200 }}>
             <Typography variant="h6">OpenAI TTS Result</Typography>
             {ttsAudioUrl ? (
-              <audio controls src={ttsAudioUrl} />
+              <audio ref={audioRef} controls src={ttsAudioUrl} />
             ) : (
               <Typography>No TTS audio generated yet</Typography>
             )}
@@ -135,6 +166,8 @@ const App = () => {
         </Grid>
       </Grid>
     </Container>
+    </>
+    
   );
 };
 
