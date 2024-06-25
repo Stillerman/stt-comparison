@@ -17,6 +17,21 @@ const App = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const audioRef = useRef();
 
+  const [audioOutputDevices, setAudioOutputDevices] = useState([]);
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState('');
+
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+        const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+        setAudioOutputDevices(audioOutputs);
+        if (audioOutputs.length > 0) {
+          setSelectedAudioOutput(audioOutputs[0].deviceId); // Default to the first audio output
+        }
+      })
+      .catch(error => console.error("Error fetching devices", error));
+  }, []);
+
   const {
     startRecording,
     stopRecording,
@@ -96,6 +111,16 @@ const App = () => {
   };
 
   useEffect(() => {
+    if (audioRef.current && selectedAudioOutput) {
+      audioRef.current.setSinkId(selectedAudioOutput)
+        .catch(error => {
+          console.error('Error setting audio output device:', error);
+        });
+    }
+  }, [ttsAudioUrl, selectedAudioOutput]);
+
+
+  useEffect(() => {
     if (audioRef.current) {
       audioRef.current.play();
     }
@@ -117,21 +142,15 @@ const App = () => {
         setOpenaiApiKey={setOpenaiApiKey}
         showOriginalAudio={showOriginalAudio}
         setShowOriginalAudio={setShowOriginalAudio}
+        audioOutputDevices={audioOutputDevices}
+        selectedAudioOutput={selectedAudioOutput}
+        setSelectedAudioOutput={setSelectedAudioOutput}
         // Add other settings as needed
       />
     </Drawer>
     <Container>
-      {/* <AudioRecorder 
-        onRecordingComplete={handleRecordingComplete}
-        audioTrackConstraints={{
-          noiseSuppression: true,
-          echoCancellation: true,
-        }}
-        downloadOnSavePress={false}
-        downloadFileExtension="webm"
-      /> */}
       <Button onMouseDown={startRecording} onMouseUp={stopRecording} variant="contained" color="secondary">
-        Start Recording
+        Hold to Record
       </Button>
       {showOriginalAudio && audioUrl && (
         <Box marginTop={2}>

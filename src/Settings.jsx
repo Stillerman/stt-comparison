@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { TextField, Button, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, ToggleButton, Checkbox } from '@mui/material';
+import React from 'react';
+import { TextField, Button, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, ToggleButton, Checkbox, Select, MenuItem } from '@mui/material';
 
-const Settings = ({ openaiApiKey, setOpenaiApiKey, showOriginalAudio, setShowOriginalAudio }) => {
+const Settings = ({ openaiApiKey, setOpenaiApiKey, showOriginalAudio, setShowOriginalAudio, audioOutputDevices, selectedAudioOutput, setSelectedAudioOutput }) => {
   return <Box p={2} width="250px">
     <Typography variant="h6" gutterBottom>Settings</Typography>
     <FormControl fullWidth>
@@ -15,8 +15,21 @@ const Settings = ({ openaiApiKey, setOpenaiApiKey, showOriginalAudio, setShowOri
       <Checkbox
         checked={showOriginalAudio}
         label="Show Original Audio"
-        onChange={e => setShowOriginalAudio(e.target.value)}
+        onChange={e => setShowOriginalAudio(e.target.checked)}
       />
+      <Typography variant="subtitle1">Select Audio Output</Typography>
+      <Select
+        value={selectedAudioOutput}
+        onChange={e => setSelectedAudioOutput(e.target.value)}
+        displayEmpty
+        fullWidth
+      >
+        {audioOutputDevices.map(device => (
+          <MenuItem key={device.deviceId} value={device.deviceId}>
+            {device.label || device.deviceId}
+          </MenuItem>
+        ))}
+      </Select>
     </FormControl>
     <Button variant="contained" color="primary" onClick={() => setOpenaiApiKey('')}>Reset</Button>
   </Box>
