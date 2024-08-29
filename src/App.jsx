@@ -22,6 +22,7 @@ const App = () => {
   );
   const [showOriginalAudio, setShowOriginalAudio] = useState(false);
   const [allowFileUpload, setAllowFileUpload] = useState(false);
+  const [runTts, setRunTts] = useState(false);
 
   const [audioUrl, setAudioUrl] = useState("");
   const [openaiResult, setOpenaiResult] = useState("");
@@ -100,18 +101,20 @@ const App = () => {
       setOpenaiTime(performance.now() - startOpenaiTime);
       setOpenaiLoading(false);
 
-      // OpenAI TTS request
-      const ttsResponse = await openai.audio.speech.create({
-        model: "tts-1",
-        input: transcription,
-        voice: "alloy", // Use the appropriate voice here
-      });
+      if (runTts) {
+        // OpenAI TTS request
+        const ttsResponse = await openai.audio.speech.create({
+          model: "tts-1",
+          input: transcription,
+          voice: "alloy", // Use the appropriate voice here
+        });
 
-      ttsResponse.blob().then((blob) => {
-        // const ttsAudioBlob = new Blob([ttsResponse.data.audio_content], { type: 'audio/mpeg' });
-        const ttsAudioUrl = URL.createObjectURL(blob);
-        setTtsAudioUrl(ttsAudioUrl);
-      });
+        ttsResponse.blob().then((blob) => {
+          // const ttsAudioBlob = new Blob([ttsResponse.data.audio_content], { type: 'audio/mpeg' });
+          const ttsAudioUrl = URL.createObjectURL(blob);
+          setTtsAudioUrl(ttsAudioUrl);
+        });
+      }
     } catch (error) {
       console.error(error);
       alert("Error occurred during transcription or TTS");
@@ -164,6 +167,8 @@ const App = () => {
           setSelectedAudioOutput={setSelectedAudioOutput}
           allowFileUpload={allowFileUpload}
           setAllowFileUpload={setAllowFileUpload}
+          runTts={runTts}
+          setRunTts={setRunTts}
           // Add other settings as needed
         />
       </Drawer>

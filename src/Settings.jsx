@@ -25,6 +25,8 @@ const Settings = ({
   setSelectedAudioOutput,
   allowFileUpload,
   setAllowFileUpload,
+  runTts,
+  setRunTts,
 }) => {
   return (
     <Box p={2} width="250px">
@@ -52,6 +54,14 @@ const Settings = ({
             checked={showOriginalAudio}
             label="Show Original Audio"
             onChange={(e) => setShowOriginalAudio(e.target.checked)}
+          />
+        </Typography>
+        <Typography variant="subtitle1">
+          Run TTS
+          <Checkbox
+            checked={runTts}
+            label="Run TTS"
+            onChange={(e) => setRunTts(e.target.checked)}
           />
         </Typography>
         <Typography variant="subtitle1">Select Audio Output</Typography>
