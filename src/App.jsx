@@ -136,6 +136,15 @@ const App = () => {
     }
   }, [audioRef, ttsAudioUrl]);
 
+  const handleDownloadTranscript = () => {
+    const element = document.createElement("a");
+    const file = new Blob([openaiResult], { type: "text/plain" });
+    element.href = URL.createObjectURL(file);
+    element.download = "transcript.txt";
+    document.body.appendChild(element); // Required for this to work in FireFox
+    element.click();
+  };
+
   return (
     <>
       <AppBar position="static">
@@ -169,7 +178,7 @@ const App = () => {
           setAllowFileUpload={setAllowFileUpload}
           runTts={runTts}
           setRunTts={setRunTts}
-          // Add other settings as needed
+        // Add other settings as needed
         />
       </Drawer>
       <Container>
@@ -213,6 +222,17 @@ const App = () => {
                       Time taken: {openaiTime.toFixed(2)} ms
                     </Typography>
                   )}
+                  {
+                    openaiResult && (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleDownloadTranscript}
+                        style={{ marginTop: 16 }}
+                      >
+                        Download Transcript
+                      </Button>
+                    )}
                 </>
               )}
             </Paper>
