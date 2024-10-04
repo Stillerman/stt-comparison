@@ -22,7 +22,7 @@ const App = () => {
   );
   const [showOriginalAudio, setShowOriginalAudio] = useState(false);
   const [allowFileUpload, setAllowFileUpload] = useState(false);
-  const [runTts, setRunTts] = useState(false);
+  const [runTts, setRunTts] = useState(true);
 
   const [audioUrl, setAudioUrl] = useState("");
   const [openaiResult, setOpenaiResult] = useState("");
@@ -34,6 +34,8 @@ const App = () => {
 
   const [audioOutputDevices, setAudioOutputDevices] = useState([]);
   const [selectedAudioOutput, setSelectedAudioOutput] = useState("");
+
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     navigator.mediaDevices
@@ -136,120 +138,100 @@ const App = () => {
     }
   }, [audioRef, ttsAudioUrl]);
 
-  const handleDownloadTranscript = () => {
-    const element = document.createElement("a");
-    const file = new Blob([openaiResult], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = "transcript.txt";
-    document.body.appendChild(element); // Required for this to work in FireFox
-    element.click();
+  const handleStartRecording = () => {
+    startRecording();
+    setIsRecording(true);
   };
 
+  const handleStopRecording = () => {
+    stopRecording();
+    setIsRecording(false);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && !isRecording) {
+        e.preventDefault();
+        handleStartRecording();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        handleStopRecording();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [isRecording, startRecording, stopRecording]);
+
   return (
-    <>
+    <Box
+      sx={{
+        height: "100vh",
+        width: "100vw",
+        backgroundColor: isRecording ? "red" : "green",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+      }}
+      onMouseDown={handleStartRecording}
+      onMouseUp={handleStopRecording}
+      onTouchStart={handleStartRecording}
+      onTouchEnd={handleStopRecording}
+    >
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            STT and TTS Tool
+            Voice Recorder
           </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Settings
-          </Button>
+          <Settings
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            showOriginalAudio={showOriginalAudio}
+            setShowOriginalAudio={setShowOriginalAudio}
+            audioOutputDevices={audioOutputDevices}
+            selectedAudioOutput={selectedAudioOutput}
+            setSelectedAudioOutput={setSelectedAudioOutput}
+            allowFileUpload={allowFileUpload}
+            setAllowFileUpload={setAllowFileUpload}
+            runTts={runTts}
+            setRunTts={setRunTts}
+          />
         </Toolbar>
       </AppBar>
-      <Drawer
-        anchor="right"
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+
+      <Container
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
       >
-        <Settings
-          openaiApiKey={openaiApiKey}
-          setOpenaiApiKey={setOpenaiApiKey}
-          showOriginalAudio={showOriginalAudio}
-          setShowOriginalAudio={setShowOriginalAudio}
-          audioOutputDevices={audioOutputDevices}
-          selectedAudioOutput={selectedAudioOutput}
-          setSelectedAudioOutput={setSelectedAudioOutput}
-          allowFileUpload={allowFileUpload}
-          setAllowFileUpload={setAllowFileUpload}
-          runTts={runTts}
-          setRunTts={setRunTts}
-        // Add other settings as needed
-        />
-      </Drawer>
-      <Container>
-        {allowFileUpload && (
-          <Box marginBottom={2}>
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={(e) => handleRecordingComplete(e.target.files[0])}
-            />
+        <Typography variant="h4" align="center" gutterBottom>
+          {isRecording
+            ? "Recording..."
+            : "Click and hold or press space to record"}
+        </Typography>
+
+        {openaiLoading && (
+          <Box display="flex" justifyContent="center">
+            <CircularProgress />
           </Box>
         )}
-        {!allowFileUpload && (
-          <Button
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            variant="contained"
-            color="secondary"
-          >
-            Hold to Record
-          </Button>
-        )}
-        {showOriginalAudio && audioUrl && (
-          <Box marginTop={2}>
-            <audio controls src={audioUrl} />
-          </Box>
-        )}
-        <Grid container spacing={2} marginTop={2}>
-          <Grid item xs={6}>
-            <Paper elevation={3} style={{ padding: 16, minHeight: 200 }}>
-              <Typography variant="h6">OpenAI Whisper STT Result</Typography>
-              {openaiLoading ? (
-                <Box display="flex" justifyContent="center">
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <>
-                  <Typography>{openaiResult}</Typography>
-                  {openaiTime && (
-                    <Typography variant="body2">
-                      Time taken: {openaiTime.toFixed(2)} ms
-                    </Typography>
-                  )}
-                  {
-                    openaiResult && (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleDownloadTranscript}
-                        style={{ marginTop: 16 }}
-                      >
-                        Download Transcript
-                      </Button>
-                    )}
-                </>
-              )}
-            </Paper>
-          </Grid>
-          <Grid item xs={6}>
-            <Paper elevation={3} style={{ padding: 16, minHeight: 200 }}>
-              <Typography variant="h6">OpenAI TTS Result</Typography>
-              {ttsAudioUrl ? (
-                <audio ref={audioRef} controls src={ttsAudioUrl} />
-              ) : (
-                <Typography>No TTS audio generated yet</Typography>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
+
+        {ttsAudioUrl && <audio ref={audioRef} src={ttsAudioUrl} />}
       </Container>
-    </>
+    </Box>
   );
 };
 
