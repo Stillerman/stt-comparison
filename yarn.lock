@@ -2834,6 +2834,11 @@ vite@^5.2.0:
   optionalDependencies:
     fsevents "~2.3.3"
 
+web-audio-api-player@^5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/web-audio-api-player/-/web-audio-api-player-5.3.2.tgz#a00950ab24c5bee442cb2a7e87aa7ebc936a52e4"
+  integrity sha512-VTm8ATHXuzcBNUK8NBM5+iiPPyrDrhBWxxLRLy6sq3t+vjEptWa20gnklxkow7Uw1qyGFgZQhzhWQoBy+R11Ng==
+
 web-streams-polyfill@4.0.0-beta.3:
   version "4.0.0-beta.3"
   resolved "https://registry.yarnpkg.com/web-streams-polyfill/-/web-streams-polyfill-4.0.0-beta.3.tgz#2898486b74f5156095e473efe989dcf185047a38"
