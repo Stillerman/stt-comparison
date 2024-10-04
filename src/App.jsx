@@ -11,26 +11,29 @@ import { useAudioRecorder } from "react-audio-voice-recorder";
 import OpenAI from "openai";
 import "./index.css";
 
-const App = () => {
-  const [openaiApiKey, setOpenaiApiKey] = useState(
-    localStorage.getItem("openaiApiKey") || "sk-proj-xxx"
-  );
+function getOpenaiApiKey() {
+  if (localStorage.getItem("openaiApiKey")) {
+    return localStorage.getItem("openaiApiKey");
+  } else {
+    const key = prompt("Enter your OpenAI API key");
+    localStorage.setItem("openaiApiKey", key);
+    return key;
+  }
+}
 
+const openaiApiKey = getOpenaiApiKey();
+
+const App = () => {
   const [openaiLoading, setOpenaiLoading] = useState(false);
   const [ttsAudioUrl, setTtsAudioUrl] = useState("");
 
-  const [isRecording, setIsRecording] = useState(false);
-
-  const { startRecording, stopRecording, recordingBlob } = useAudioRecorder();
+  const { startRecording, stopRecording, recordingBlob, isRecording } =
+    useAudioRecorder();
 
   const openai = new OpenAI({
     apiKey: openaiApiKey,
     dangerouslyAllowBrowser: true,
   });
-
-  useEffect(() => {
-    localStorage.setItem("openaiApiKey", openaiApiKey);
-  }, [openaiApiKey]);
 
   useEffect(() => {
     console.log("recordingBlob updated");
@@ -83,35 +86,44 @@ const App = () => {
   const handleStartRecording = () => {
     console.log("Recording started");
     startRecording();
-    setIsRecording(true);
+    console.log("isRecording after start:", isRecording);
   };
 
   const handleStopRecording = () => {
     console.log("Recording stopped");
     stopRecording();
-    setIsRecording(false);
+    console.log("isRecording after stop:", isRecording);
   };
 
-  // Ensure cleanup on component unmount
+  // Modify the useEffect for keyboard events
   useEffect(() => {
-    return () => {
-      if (isRecording) {
-        console.log("Cleaning up recording on unmount");
-        stopRecording();
+    const handleKeyDown = (event) => {
+      if (event.code === "Space" && !isRecording) {
+        event.preventDefault();
+        console.log("Space key pressed, starting recording");
+        handleStartRecording();
       }
     };
-  }, [isRecording]);
+
+    const handleKeyUp = (event) => {
+      if (event.code === "Space" && isRecording) {
+        event.preventDefault();
+        console.log("Space key released, stopping recording");
+        handleStopRecording();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [isRecording, handleStartRecording, handleStopRecording]);
 
   return (
     <>
-      <AppBar position="static" className="MuiAppBar-root">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Voice Recorder
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
       <Box
         sx={{
           height: "100vh",
@@ -138,7 +150,7 @@ const App = () => {
           <Typography variant="h4" align="center" gutterBottom>
             {isRecording
               ? "Recording..."
-              : "Click and hold or press space to record"}
+              : "Click and hold, press space, or touch to record"}
           </Typography>
 
           {openaiLoading && (
