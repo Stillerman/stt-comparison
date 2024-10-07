@@ -91,7 +91,7 @@ const App = () => {
 
       // Generate GPT-4's response
       const gpt4Response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           ...conversation.map((msg) => ({
             role: msg.role,
@@ -190,7 +190,7 @@ const App = () => {
       <AppBar position="fixed">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Voice Chat with GPT-4
+            Voice Chat with GPT-4o
           </Typography>
           <IconButton color="inherit" onClick={() => setIsHistoryOpen(true)}>
             <HistoryIcon />
@@ -252,6 +252,12 @@ const App = () => {
               />
             </ListItem>
           ))}
+
+          {conversation.length === 0 && (
+            <ListItem>
+              <ListItemText primary="No conversation history yet. Click and hold, press space, or touch to record." />
+            </ListItem>
+          )}
         </List>
       </Drawer>
     </>
