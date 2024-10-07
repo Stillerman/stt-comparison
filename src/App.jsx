@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Container,
   Typography,
@@ -10,6 +10,7 @@ import {
 import { useAudioRecorder } from "react-audio-voice-recorder";
 import OpenAI from "openai";
 import "./index.css";
+import useKeyDown from "./hooks/useKeyDown";
 
 function getOpenaiApiKey() {
   if (localStorage.getItem("openaiApiKey")) {
@@ -26,6 +27,8 @@ const openaiApiKey = getOpenaiApiKey();
 const App = () => {
   const [openaiLoading, setOpenaiLoading] = useState(false);
   const [ttsAudioUrl, setTtsAudioUrl] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef(null);
 
   const { startRecording, stopRecording, recordingBlob, isRecording } =
     useAudioRecorder();
@@ -64,7 +67,6 @@ const App = () => {
       });
 
       const transcription = response.text;
-      setOpenaiLoading(false);
 
       const ttsResponse = await openai.audio.speech.create({
         model: "tts-1",
@@ -73,8 +75,12 @@ const App = () => {
       });
 
       ttsResponse.blob().then((blob) => {
+        setOpenaiLoading(false);
+
         const ttsAudioUrl = URL.createObjectURL(blob);
         setTtsAudioUrl(ttsAudioUrl);
+        setOpenaiLoading(false);
+        setIsSpeaking(true);
       });
     } catch (error) {
       console.error(error);
@@ -82,6 +88,14 @@ const App = () => {
       setOpenaiLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = () => {
+        setIsSpeaking(false);
+      };
+    }
+  }, [ttsAudioUrl]);
 
   const handleStartRecording = () => {
     console.log("Recording started");
@@ -95,32 +109,29 @@ const App = () => {
     console.log("isRecording after stop:", isRecording);
   };
 
-  // Modify the useEffect for keyboard events
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.code === "Space" && !isRecording) {
-        event.preventDefault();
+  useKeyDown(
+    "Space",
+    () => {
+      if (!isRecording) {
         console.log("Space key pressed, starting recording");
         handleStartRecording();
       }
-    };
-
-    const handleKeyUp = (event) => {
-      if (event.code === "Space" && isRecording) {
-        event.preventDefault();
+    },
+    () => {
+      if (isRecording) {
         console.log("Space key released, stopping recording");
         handleStopRecording();
       }
-    };
+    },
+    [isRecording, handleStartRecording, handleStopRecording]
+  );
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [isRecording, handleStartRecording, handleStopRecording]);
+  const getBackgroundColor = () => {
+    if (isRecording) return "red";
+    if (openaiLoading) return "yellow";
+    if (isSpeaking) return "blue";
+    return "green";
+  };
 
   return (
     <>
@@ -128,7 +139,7 @@ const App = () => {
         sx={{
           height: "100vh",
           width: "100vw",
-          backgroundColor: isRecording ? "red" : "green",
+          backgroundColor: getBackgroundColor(),
           cursor: "pointer",
           display: "flex",
           flexDirection: "column",
@@ -150,6 +161,10 @@ const App = () => {
           <Typography variant="h4" align="center" gutterBottom>
             {isRecording
               ? "Recording..."
+              : openaiLoading
+              ? "Processing..."
+              : isSpeaking
+              ? "Speaking..."
               : "Click and hold, press space, or touch to record"}
           </Typography>
 
@@ -159,7 +174,7 @@ const App = () => {
             </Box>
           )}
 
-          {ttsAudioUrl && <audio src={ttsAudioUrl} autoPlay />}
+          {ttsAudioUrl && <audio ref={audioRef} src={ttsAudioUrl} autoPlay />}
         </Container>
       </Box>
     </>
