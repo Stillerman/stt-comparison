@@ -6,7 +6,13 @@ import {
   Box,
   AppBar,
   Toolbar,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
 import { useAudioRecorder } from "react-audio-voice-recorder";
 import OpenAI from "openai";
 import "./index.css";
@@ -26,8 +32,11 @@ const openaiApiKey = getOpenaiApiKey();
 
 const App = () => {
   const [openaiLoading, setOpenaiLoading] = useState(false);
-  const [ttsAudioUrl, setTtsAudioUrl] = useState("");
+  const [userAudioUrl, setUserAudioUrl] = useState("");
+  const [gpt4AudioUrl, setGpt4AudioUrl] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [conversation, setConversation] = useState([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const audioRef = useRef(null);
 
   const { startRecording, stopRecording, recordingBlob, isRecording } =
@@ -60,33 +69,76 @@ const App = () => {
     setOpenaiLoading(true);
 
     try {
-      const response = await openai.audio.transcriptions.create({
+      // Transcribe user's speech
+      const transcriptionResponse = await openai.audio.transcriptions.create({
         model: "whisper-1",
         file: file,
         language: "en",
       });
 
-      const transcription = response.text;
+      const userTranscription = transcriptionResponse.text;
 
-      const ttsResponse = await openai.audio.speech.create({
+      // Generate TTS for user's speech
+      const userTtsResponse = await openai.audio.speech.create({
         model: "tts-1",
-        input: transcription,
+        input: userTranscription,
         voice: "alloy",
       });
 
-      ttsResponse.blob().then((blob) => {
-        setOpenaiLoading(false);
+      const userAudioBlob = await userTtsResponse.blob();
+      const userAudioUrl = URL.createObjectURL(userAudioBlob);
+      setUserAudioUrl(userAudioUrl);
 
-        const ttsAudioUrl = URL.createObjectURL(blob);
-        setTtsAudioUrl(ttsAudioUrl);
-        setOpenaiLoading(false);
-        setIsSpeaking(true);
+      // Generate GPT-4's response
+      const gpt4Response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          ...conversation.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          { role: "user", content: userTranscription },
+        ],
       });
+
+      const gpt4Text = gpt4Response.choices[0].message.content;
+
+      // Generate TTS for GPT-4's response
+      const gpt4TtsResponse = await openai.audio.speech.create({
+        model: "tts-1",
+        input: gpt4Text,
+        voice: "nova",
+      });
+
+      const gpt4AudioBlob = await gpt4TtsResponse.blob();
+      const gpt4AudioUrl = URL.createObjectURL(gpt4AudioBlob);
+      setGpt4AudioUrl(gpt4AudioUrl);
+
+      // Update conversation history
+      setConversation((prev) => [
+        ...prev,
+        { role: "user", content: userTranscription },
+        { role: "assistant", content: gpt4Text },
+      ]);
+
+      setOpenaiLoading(false);
+      playAudioSequence(userAudioUrl, gpt4AudioUrl);
     } catch (error) {
       console.error(error);
-      alert("Error occurred during transcription or TTS");
+      alert("Error occurred during processing");
       setOpenaiLoading(false);
     }
+  };
+
+  const playAudioSequence = (userAudio, gpt4Audio) => {
+    setIsSpeaking(true);
+    const audio = new Audio(userAudio);
+    audio.onended = () => {
+      const gpt4AudioElement = new Audio(gpt4Audio);
+      gpt4AudioElement.onended = () => setIsSpeaking(false);
+      gpt4AudioElement.play();
+    };
+    audio.play();
   };
 
   useEffect(() => {
@@ -95,7 +147,7 @@ const App = () => {
         setIsSpeaking(false);
       };
     }
-  }, [ttsAudioUrl]);
+  }, [gpt4AudioUrl]);
 
   const handleStartRecording = () => {
     console.log("Recording started");
@@ -135,6 +187,16 @@ const App = () => {
 
   return (
     <>
+      <AppBar position="fixed">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Voice Chat with GPT-4
+          </Typography>
+          <IconButton color="inherit" onClick={() => setIsHistoryOpen(true)}>
+            <HistoryIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
       <Box
         sx={{
           height: "100vh",
@@ -143,6 +205,7 @@ const App = () => {
           cursor: "pointer",
           display: "flex",
           flexDirection: "column",
+          paddingTop: "64px", // To account for the AppBar
         }}
         onMouseDown={handleStartRecording}
         onMouseUp={handleStopRecording}
@@ -173,10 +236,24 @@ const App = () => {
               <CircularProgress />
             </Box>
           )}
-
-          {ttsAudioUrl && <audio ref={audioRef} src={ttsAudioUrl} autoPlay />}
         </Container>
       </Box>
+      <Drawer
+        anchor="right"
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+      >
+        <List sx={{ width: 300 }}>
+          {conversation.map((msg, index) => (
+            <ListItem key={index}>
+              <ListItemText
+                primary={msg.role === "user" ? "You" : "GPT-4"}
+                secondary={msg.content}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Drawer>
     </>
   );
 };
