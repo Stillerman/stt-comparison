@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
@@ -16,9 +16,10 @@ import {
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { useAudioRecorder } from "react-audio-voice-recorder";
-import OpenAI from "openai";
 import useKeyDown from "./hooks/useKeyDown";
 import AudioOutputSelector from "./components/AudioOutputSelector";
+import { useAudioProcessing } from "./hooks/useAudioProcessing";
+import { useAudioPlayback } from "./hooks/useAudioPlayback";
 
 function getOpenaiApiKey() {
   if (localStorage.getItem("openaiApiKey")) {
@@ -33,34 +34,25 @@ function getOpenaiApiKey() {
 const openaiApiKey = getOpenaiApiKey();
 
 const App = () => {
-  const [openaiLoading, setOpenaiLoading] = useState(false);
-  const [userAudioUrl, setUserAudioUrl] = useState("");
-  const [gpt4AudioUrl, setGpt4AudioUrl] = useState("");
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [conversation, setConversation] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
-  const audioRef = useRef(null);
   const [audioOutputs, setAudioOutputs] = useState([]);
   const [selectedOutput, setSelectedOutput] = useState("");
 
   const { startRecording, stopRecording, recordingBlob, isRecording } =
     useAudioRecorder();
-
-  const openai = new OpenAI({
-    apiKey: openaiApiKey,
-    dangerouslyAllowBrowser: true,
-  });
+  const { openaiLoading, userAudioUrl, gpt4AudioUrl, processAudio } =
+    useAudioProcessing(openaiApiKey);
+  const { isSpeaking, playAudio, playAudioSequence } = useAudioPlayback();
 
   useEffect(() => {
-    console.log("recordingBlob updated");
     if (recordingBlob) {
       handleRecordingComplete(recordingBlob);
     }
   }, [recordingBlob]);
 
   useEffect(() => {
-    // Get available audio output devices
     navigator.mediaDevices.enumerateDevices().then((devices) => {
       const outputs = devices.filter((device) => device.kind === "audiooutput");
       setAudioOutputs(outputs);
@@ -74,137 +66,37 @@ const App = () => {
     setSelectedOutput(event.target.value);
   };
 
-  const handleRecordingComplete = (blob) => {
-    const url = URL.createObjectURL(blob);
+  const handleRecordingComplete = async (blob) => {
     const file = new File([blob], "recording.webm", { type: blob.type });
-    handleTranscription(file);
-  };
+    const result = await processAudio(file, selectedTab, conversation);
 
-  const handleTranscription = async (file) => {
-    if (!file || !openaiApiKey) {
-      alert("Please provide all required inputs");
-      return;
-    }
-
-    setOpenaiLoading(true);
-
-    try {
-      // Transcribe user's speech
-      const transcriptionResponse = await openai.audio.transcriptions.create({
-        model: "whisper-1",
-        file: file,
-        language: "en",
-      });
-
-      const userTranscription = transcriptionResponse.text;
-
-      // Generate TTS for user's speech
-      const userTtsResponse = await openai.audio.speech.create({
-        model: "tts-1",
-        input: userTranscription,
-        voice: "alloy",
-      });
-
-      const userAudioBlob = await userTtsResponse.blob();
-      const userAudioUrl = URL.createObjectURL(userAudioBlob);
-      setUserAudioUrl(userAudioUrl);
-
+    if (result) {
       if (selectedTab === 1) {
-        // Arkenza Chat mode
-        // Generate GPT-4's response
-        const gpt4Response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            ...conversation.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-            })),
-            { role: "user", content: userTranscription },
-          ],
-        });
-
-        const gpt4Text = gpt4Response.choices[0].message.content;
-
-        // Generate TTS for GPT-4's response
-        const gpt4TtsResponse = await openai.audio.speech.create({
-          model: "tts-1",
-          input: gpt4Text,
-          voice: "nova",
-        });
-
-        const gpt4AudioBlob = await gpt4TtsResponse.blob();
-        const gpt4AudioUrl = URL.createObjectURL(gpt4AudioBlob);
-        setGpt4AudioUrl(gpt4AudioUrl);
-
-        // Update conversation history
         setConversation((prev) => [
           ...prev,
-          { role: "user", content: userTranscription },
-          { role: "assistant", content: gpt4Text },
+          { role: "user", content: result.userTranscription },
+          { role: "assistant", content: result.gpt4Text },
         ]);
-
-        setOpenaiLoading(false);
-        playAudioSequence(userAudioUrl, gpt4AudioUrl);
+        playAudioSequence(
+          result.userAudioUrl,
+          result.gpt4AudioUrl,
+          selectedTab,
+          selectedOutput
+        );
       } else {
-        // Voice Mirror or Zoom Meeting mode
-        setOpenaiLoading(false);
-        playAudio(userAudioUrl);
+        playAudio(result.userAudioUrl, selectedTab, selectedOutput);
       }
-    } catch (error) {
-      console.error(error);
-      alert("Error occurred during processing");
-      setOpenaiLoading(false);
     }
   };
-
-  const playAudio = (audioUrl) => {
-    setIsSpeaking(true);
-    const audio = new Audio(audioUrl);
-    if (selectedTab === 2) {
-      // Zoom Meeting mode
-      audio.setSinkId(selectedOutput);
-    }
-    audio.onended = () => setIsSpeaking(false);
-    audio.play();
-  };
-
-  const playAudioSequence = (userAudio, gpt4Audio) => {
-    setIsSpeaking(true);
-    const audio = new Audio(userAudio);
-    if (selectedTab === 2) {
-      // Zoom Meeting mode
-      audio.setSinkId(selectedOutput);
-    }
-    audio.onended = () => {
-      const gpt4AudioElement = new Audio(gpt4Audio);
-      if (selectedTab === 2) {
-        // Zoom Meeting mode
-        gpt4AudioElement.setSinkId(selectedOutput);
-      }
-      gpt4AudioElement.onended = () => setIsSpeaking(false);
-      gpt4AudioElement.play();
-    };
-    audio.play();
-  };
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.onended = () => {
-        setIsSpeaking(false);
-      };
-    }
-  }, [gpt4AudioUrl]);
 
   const handleStartRecording = () => {
     console.log("Recording started");
     startRecording();
-    console.log("isRecording after start:", isRecording);
   };
 
   const handleStopRecording = () => {
     console.log("Recording stopped");
     stopRecording();
-    console.log("isRecording after stop:", isRecording);
   };
 
   useKeyDown(
