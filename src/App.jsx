@@ -7,14 +7,15 @@ import {
   AppBar,
   Toolbar,
   IconButton,
+  Button,
   Drawer,
   List,
   ListItem,
   ListItemText,
   Tabs,
   Tab,
+  Paper,
 } from "@mui/material";
-import HistoryIcon from "@mui/icons-material/History";
 import { useAudioRecorder } from "react-audio-voice-recorder";
 import useKeyDown from "./hooks/useKeyDown";
 import AudioOutputSelector from "./components/AudioOutputSelector";
@@ -123,6 +124,53 @@ const App = () => {
     return "green";
   };
 
+  const renderControlArea = () => {
+    switch (selectedTab) {
+      case 0: // Voice Mirror
+        return (
+          <Typography variant="body1">
+            Voice Mirror Mode: Your voice will be played back to you.
+          </Typography>
+        );
+      case 1: // Arkenza Chat
+        return (
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography variant="body1">
+              Arkenza Chat Mode: Chat with GPT-4
+            </Typography>
+            <Button color="inherit" onClick={() => setIsHistoryOpen(true)}>
+              Chat History
+            </Button>
+          </Box>
+        );
+      case 2: // Zoom Meeting
+        return (
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography variant="body1">
+              Zoom Meeting Mode - Select VB Cable (Virtual)
+            </Typography>
+            <Box sx={{ width: "100%", maxWidth: 300 }}>
+              <AudioOutputSelector
+                audioOutputs={audioOutputs}
+                selectedOutput={selectedOutput}
+                onOutputChange={handleOutputChange}
+              />
+            </Box>
+          </Box>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <AppBar position="fixed">
@@ -140,61 +188,64 @@ const App = () => {
             <Tab label="Arkenza Chat" />
             <Tab label="Zoom Meeting" />
           </Tabs>
-          <IconButton color="inherit" onClick={() => setIsHistoryOpen(true)}>
-            <HistoryIcon />
-          </IconButton>
         </Toolbar>
       </AppBar>
       <Box
         sx={{
+          paddingTop: "64px", // To account for the AppBar
           height: "100vh",
-          width: "100vw",
-          backgroundColor: getBackgroundColor(),
-          cursor: "pointer",
           display: "flex",
           flexDirection: "column",
-          paddingTop: "64px", // To account for the AppBar
         }}
-        onMouseDown={handleStartRecording}
-        onMouseUp={handleStopRecording}
-        onTouchStart={handleStartRecording}
-        onTouchEnd={handleStopRecording}
       >
-        <Container
+        <Paper
+          elevation={3}
           sx={{
-            flexGrow: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
+            padding: 2,
+            // marginBottom: 2,
           }}
         >
-          <Typography variant="h4" align="center" gutterBottom>
-            {isRecording
-              ? "Recording..."
-              : openaiLoading
-              ? "Processing..."
-              : isSpeaking
-              ? "Speaking..."
-              : "Click and hold, press space, or touch to record"}
-          </Typography>
+          {renderControlArea()}
+        </Paper>
+        <Box
+          sx={{
+            flexGrow: 1,
+            backgroundColor: getBackgroundColor(),
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+          }}
+          onMouseDown={handleStartRecording}
+          onMouseUp={handleStopRecording}
+          onTouchStart={handleStartRecording}
+          onTouchEnd={handleStopRecording}
+        >
+          <Container
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Typography variant="h4" align="center" gutterBottom>
+              {isRecording
+                ? "Recording..."
+                : openaiLoading
+                ? "Processing..."
+                : isSpeaking
+                ? "Speaking..."
+                : "Click and hold, press space, or touch to record"}
+            </Typography>
 
-          {openaiLoading && (
-            <Box display="flex" justifyContent="center">
-              <CircularProgress />
-            </Box>
-          )}
-
-          {selectedTab === 2 && ( // Show audio output selector for Zoom Meeting mode
-            <Box mt={2} width="100%" maxWidth={300}>
-              <AudioOutputSelector
-                audioOutputs={audioOutputs}
-                selectedOutput={selectedOutput}
-                onOutputChange={handleOutputChange}
-              />
-            </Box>
-          )}
-        </Container>
+            {openaiLoading && (
+              <Box display="flex" justifyContent="center">
+                <CircularProgress />
+              </Box>
+            )}
+          </Container>
+        </Box>
       </Box>
       <Drawer
         anchor="right"
