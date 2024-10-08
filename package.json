@@ -14,11 +14,13 @@
     "@emotion/styled": "^11.11.5",
     "@mui/icons-material": "^6.1.2",
     "@mui/material": "^5.15.19",
+    "@openai/realtime-api-beta": "github:openai/openai-realtime-api-beta",
     "axios": "^1.7.2",
     "openai": "^4.47.3",
     "react": "^18.2.0",
     "react-audio-voice-recorder": "^2.2.0",
     "react-dom": "^18.2.0",
+    "react-feather": "^2.0.10",
     "web-audio-api-player": "^5.3.2"
   },
   "devDependencies": {
@@ -29,6 +31,7 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "sass": "^1.79.4",
     "vite": "^5.2.0"
   }
 }

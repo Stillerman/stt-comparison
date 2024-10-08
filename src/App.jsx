@@ -21,6 +21,7 @@ import useKeyDown from "./hooks/useKeyDown";
 import AudioOutputSelector from "./components/AudioOutputSelector";
 import { useAudioProcessing } from "./hooks/useAudioProcessing";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
+import { ConsolePage } from "./realtime/pages/ConsolePage";
 
 function getOpenaiApiKey() {
   if (localStorage.getItem("openaiApiKey")) {
@@ -187,66 +188,76 @@ const App = () => {
             <Tab label="Voice Mirror" />
             <Tab label="Arkenza Chat" />
             <Tab label="Zoom Meeting" />
+            <Tab label="Realtime Chat" />
+            <Tab label="Realtime Voice Mirror" />
           </Tabs>
         </Toolbar>
       </AppBar>
-      <Box
-        sx={{
-          paddingTop: "64px", // To account for the AppBar
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Paper
-          elevation={3}
-          sx={{
-            padding: 2,
-            // marginBottom: 2,
-          }}
-        >
-          {renderControlArea()}
-        </Paper>
+      {selectedTab === 3 && (
+        <ConsolePage apiKey={openaiApiKey} voiceMirror={false} />
+      )}
+      {selectedTab === 4 && (
+        <ConsolePage apiKey={openaiApiKey} voiceMirror={true} />
+      )}
+      {selectedTab <= 2 && (
         <Box
           sx={{
-            flexGrow: 1,
-            backgroundColor: getBackgroundColor(),
-            cursor: "pointer",
+            paddingTop: "64px", // To account for the AppBar
+            height: "100vh",
             display: "flex",
             flexDirection: "column",
           }}
-          onMouseDown={handleStartRecording}
-          onMouseUp={handleStopRecording}
-          onTouchStart={handleStartRecording}
-          onTouchEnd={handleStopRecording}
         >
-          <Container
+          <Paper
+            elevation={3}
             sx={{
-              flexGrow: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
+              padding: 2,
+              // marginBottom: 2,
             }}
           >
-            <Typography variant="h4" align="center" gutterBottom>
-              {isRecording
-                ? "Recording..."
-                : openaiLoading
-                ? "Processing..."
-                : isSpeaking
-                ? "Speaking..."
-                : "Click and hold, press space, or touch to record"}
-            </Typography>
+            {renderControlArea()}
+          </Paper>
+          <Box
+            sx={{
+              flexGrow: 1,
+              backgroundColor: getBackgroundColor(),
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onMouseDown={handleStartRecording}
+            onMouseUp={handleStopRecording}
+            onTouchStart={handleStartRecording}
+            onTouchEnd={handleStopRecording}
+          >
+            <Container
+              sx={{
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="h4" align="center" gutterBottom>
+                {isRecording
+                  ? "Recording..."
+                  : openaiLoading
+                  ? "Processing..."
+                  : isSpeaking
+                  ? "Speaking..."
+                  : "Click and hold, press space, or touch to record"}
+              </Typography>
 
-            {openaiLoading && (
-              <Box display="flex" justifyContent="center">
-                <CircularProgress />
-              </Box>
-            )}
-          </Container>
+              {openaiLoading && (
+                <Box display="flex" justifyContent="center">
+                  <CircularProgress />
+                </Box>
+              )}
+            </Container>
+          </Box>
         </Box>
-      </Box>
+      )}
       <Drawer
         anchor="right"
         open={isHistoryOpen}
