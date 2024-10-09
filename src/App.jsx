@@ -22,6 +22,7 @@ import AudioOutputSelector from "./components/AudioOutputSelector";
 import { useAudioProcessing } from "./hooks/useAudioProcessing";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { ConsolePage } from "./realtime/pages/ConsolePage";
+import { debatePrompt, voiceMirrorPrompt, harshDebatePrompt } from "./prompts";
 
 function getOpenaiApiKey() {
   if (localStorage.getItem("openaiApiKey")) {
@@ -190,14 +191,20 @@ const App = () => {
             <Tab label="Zoom Meeting" />
             <Tab label="Realtime Chat" />
             <Tab label="Realtime Voice Mirror" />
+            <Tab label="Debate" />
+            <Tab label="Harsh Debate" />
           </Tabs>
         </Toolbar>
       </AppBar>
-      {selectedTab === 3 && (
-        <ConsolePage apiKey={openaiApiKey} voiceMirror={false} />
-      )}
+      {selectedTab === 3 && <ConsolePage apiKey={openaiApiKey} />}
       {selectedTab === 4 && (
-        <ConsolePage apiKey={openaiApiKey} voiceMirror={true} />
+        <ConsolePage apiKey={openaiApiKey} startingPrompt={voiceMirrorPrompt} />
+      )}
+      {selectedTab === 5 && (
+        <ConsolePage apiKey={openaiApiKey} startingPrompt={debatePrompt} />
+      )}
+      {selectedTab === 6 && (
+        <ConsolePage apiKey={openaiApiKey} startingPrompt={harshDebatePrompt} />
       )}
       {selectedTab <= 2 && (
         <Box

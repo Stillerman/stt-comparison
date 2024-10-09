@@ -11,19 +11,31 @@
 const LOCAL_RELAY_SERVER_URL: string =
   import.meta.env.REACT_APP_LOCAL_RELAY_SERVER_URL || "";
 
+const modifiedInstructions = `System settings:
+Tool use: enabled.
+
+Instructions:
+- You are an artificial intelligence agent responsible for helping test realtime voice capabilities
+- Please make sure to respond with a helpful voice via audio
+- Be kind, helpful, and curteous
+- It is okay to ask the user questions
+- Be open to exploration and conversation
+
+Personality:
+- Be upbeat and genuine
+- Try speaking quickly as if excited
+`;
+
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { RealtimeClient } from "@openai/realtime-api-beta";
 import { ItemType } from "@openai/realtime-api-beta/dist/lib/client.js";
 import { WavRecorder, WavStreamPlayer } from "../lib/wavtools/index.js";
-import { instructions } from "../utils/conversation_config.js";
 import { WavRenderer } from "../utils/wav_renderer";
 import { X, Edit, Zap, ArrowUp, ArrowDown } from "react-feather";
 import {
   Box,
   Typography,
   Button,
-  ToggleButton,
-  ToggleButtonGroup,
   Paper,
   List,
   ListItem,
@@ -33,6 +45,10 @@ import {
   Divider,
 } from "@mui/material";
 import { styled } from "@mui/system";
+import {
+  conversationWithStuttererPrompt,
+  harshDebatePrompt,
+} from "../../prompts.js";
 
 /**
  * Type for all event logs
@@ -62,10 +78,12 @@ const VisualizationBox = styled(Box)({
 
 export function ConsolePage({
   apiKey,
+  startingPrompt = undefined,
   voiceMirror = false,
 }: {
   apiKey: string;
   voiceMirror: boolean;
+  startingPrompt?: string;
 }) {
   /**
    * Ask user for API Key
@@ -182,14 +200,7 @@ export function ConsolePage({
       {
         type: `input_text`,
         // text: `Hello!`,
-        text: voiceMirror
-          ? `You are acting as a voice mirror. Say the users words back to them word for word (of course don't say anything you are not comfortable with or that is innapropriate. Still follow your guidelines). Strt off by saying "Ok, I'm your voice mirror. I will repeat back everything you say."`
-          : `You are conducting a conversation with someone who stutters.
-        Please be patient and wait for them to finish each sentence before responding.
-        When the user is done talking, repeat back to them what they said word for word in quotation marks
-        (but do not immitate their stuttering or use any filler words such as like, um, ah, etc).
-        Then pause and give your response. This will show the user that you are listening to
-        them and they can hear their speech with no more stuttering. Start off the conversation by asking them how their day is going.`,
+        text: startingPrompt ? startingPrompt : conversationWithStuttererPrompt,
       },
     ]);
 
@@ -378,7 +389,7 @@ export function ConsolePage({
     const client = clientRef.current;
 
     // Set instructions
-    client.updateSession({ instructions: instructions });
+    client.updateSession({ instructions: modifiedInstructions });
     // Set transcription, otherwise we don't get user transcriptions back
     client.updateSession({ input_audio_transcription: { model: "whisper-1" } });
 
